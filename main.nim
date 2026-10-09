@@ -5,14 +5,14 @@ import math
 import os
 
 #Main var
-var
-    equations: set[char] = {'+', '-', '*', '/'}
+const
+    Equations: set[char] = {'+', '-', '*', '/'}
 
 #Variables
-var variables = initTable[string, string]()
+var variables: Table[system.string, system.string] = initTable[string, string]()
 
 #Functions
-var function = initTable[string, string]()
+var function: Table[system.string, system.string] = initTable[string, string]()
 
 
 #Helping procedures
@@ -29,93 +29,89 @@ proc resolveValue(value: string, variables: Table[string, string]): float =
     else:
         return value.parseFloat()
 
+proc deleteLastEquationItem(equation: var seq[string]) =
+    if equation.len > 0:
+        equation.setLen(equation.len - 1)
+
 
 #Solve an equation
-proc getEquation(line: string): string =
+proc parseEquation(line: string): seq[string] =
     var
-            temp_out: string
-            resolved: string
-            content: seq[string]
+            to_go: string
+            pos: int
+            equation: seq[string]
             to_remove: string
-            cleaned_line: string
-            prev_letter: char
-            index: int
 
-    temp_out = line
-    for chars in line:
+    to_go = line
+    pos = 0
+    echo to_go
 
-            if chars in equations:
-                case chars
-                of '+':
-                    content = temp_out.split(equations, 2)
-                    resolved = $(resolveValue(content[0], variables) + resolveValue(content[1], variables))
-                    to_remove = "" & $content[0] & "+" & $content[1]
+    while to_go != "":
+        echo "to_go: '", to_go, "'  equation: ", equation
+        pos = 0
+        if to_go[0] in Digits:
+            var numbers: string = $to_go[0]
+            pos += 1
+            while pos < to_go.len and to_go[pos] in Digits:
+                numbers.add($to_go[pos])
+                pos += 1
 
-                of '-':
-                    content = temp_out.split(equations, 2)
-                    resolved = $(resolveValue(content[0], variables) - resolveValue(content[1], variables))
-                    to_remove = "" & $content[0] & "-" & $content[1]
+            to_go.removePrefix(numbers)
+            equation.add(numbers)
+            if to_go.len > 0 and $to_go[0] in variables:
+                equation.add("*")
 
-                of '*':
-                    content = temp_out.split(equations, 2)
-                    resolved = $(resolveValue(content[0], variables) * resolveValue(content[1], variables))
-                    to_remove = "" & $content[0] & "*" & $content[1]
-                
-                of '/':
-                    content = temp_out.split(equations, 2)
-                    resolved = $(resolveValue(content[0], variables) / resolveValue(content[1], variables))
-                    to_remove = "" & $content[0] & "/" & $content[1]
+        elif $to_go[0] in variables:
+            equation.add(variables[$to_go[0]])
+            to_go = to_go.substr(1)
+            if to_go.len > 0 and $to_go[0] in variables:
+                equation.add("*")
 
-                else:
-                    echo "Something is sirously wrong"
-                    
-                cleaned_line = temp_out
-                cleaned_line.removePrefix(to_remove)
-                temp_out = &"{resolved}{cleaned_line}"
-                echo &"|{to_remove}|"
+        elif to_go[0] in Equations:
+            equation.add($to_go[0])
+            to_go = to_go.substr(1)
 
-            else:
-                if $chars in variables:
-                    index = line.find(chars)
-                    if index > 0:
-
-                        if $line[index - 1] in variables:
-
-                            resolved = $(variables[$chars].parseFloat() * variables[$line[index - 1]].parseFloat())
-                            to_remove = &"{variables[$chars]}{variables[$line[index - 1]]}"
-
-                        elif line[index - 1] in equations:
-                            continue
-
-                        else:
-                            content  = line.split(Letters)
-                            resolved = $(content[0].parseFloat() * variables[$chars].parseFloat())
-
-                    elif index >= 0 and index + 1 > line.len():
-
-                        if $line[index + 1] in variables:
-                            echo "found0"
-                            resolved = $(variables[$chars].parseFloat() * variables[$line[index + 1]].parseFloat())
-                            to_remove = &"{variables[$chars]}{variables[$line[index + 1]]}"
-
-                        elif line[index + 1] in equations:
-                            continue
-                        
-                        else:
-                            echo &"Error with char: {chars}. Misplaced"
-                    
-                    cleaned_line = temp_out
-                    cleaned_line.removePrefix(to_remove)
-                    temp_out = &"{resolved}{cleaned_line}"
-                    echo &"|{to_remove}|"
+        else:
+            to_go = to_go.substr(1)
 
 
+    echo &"Finished equation: {equation}"
+    equation
 
 
-    if equations notin line:
-        if line in variables:
-            temp_out = variables[line]
-    temp_out
+proc getEquation(line_to_solve: string): string =
+    var 
+        equation: seq[string] = parseEquation(line_to_solve)
+        equationResult: string
+
+    for i in equation:
+
+        case i
+        of "+":
+            var pos: int = equation.find("+") 
+            equationResult = $(equation[pos - 1].parseFloat() + equation[pos + 1].parseFloat())
+
+        of "-":
+            var pos: int = equation.find("+") 
+            equationResult = $(equation[pos - 1].parseFloat() - equation[pos + 1].parseFloat())
+
+        of "*":
+            var pos: int = equation.find("+") 
+            equationResult = $(equation[pos - 1].parseFloat() * equation[pos + 1].parseFloat())
+ 
+        of "/":
+            var pos: int = equation.find("+") 
+            equationResult = $(equation[pos - 1].parseFloat() / equation[pos + 1].parseFloat())
+            
+        else:
+            echo "Action not recongnized in the equation"
+
+    equationResult
+
+
+    
+        
+        
 
 
 
@@ -136,7 +132,7 @@ for line in lines(file):
             value: string
 
         #If the value is made of an euqation
-        if equations in line:
+        if Equations in line:
             content = line.strip_bare().split("=")
             value = content[1].getEquation()
             if value.parseFloat() == trunc(value.parseFloat()):
